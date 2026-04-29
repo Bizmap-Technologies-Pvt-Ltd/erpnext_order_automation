@@ -139,7 +139,7 @@ app_license = "mit"
 
 doc_events = {
     "Sales Order": {
-        "after_insert": "erpnext_order_automation.erpnext_order_app.doctype.order_confirmation.order_confirmation.create_order_confirmation"
+        "on_submit": "erpnext_order_automation.erpnext_order_app.doctype.order_confirmation.order_confirmation.send_order_confirmation"
     }
 }
 
@@ -176,6 +176,55 @@ doc_events = {
 # 	"frappe.desk.doctype.event.event.get_events": "erpnext_order_automation.event.get_events"
 # }
 #
+
+fixtures = [
+    {
+        "doctype": "Client Script",
+        "filters": [
+            [
+                "name",
+                "in",
+                [
+                    "Order Conformation contact filter",
+                    "Order Confirmation Whatsapp Msg",
+                ],
+            ]
+        ],
+    },
+    {
+        "doctype": "Custom Field",
+        "filters": [
+            [
+                "name",
+                "in",
+                [
+                    "Order Confirmation-custom_whatsapp_message_sent",
+                    "Order Confirmation-custom_shipping_terms",
+                    "Order Confirmation-custom_current_date",
+                    "Order Confirmation-custom_time",
+                    "Sales Order-custom_order_confirm_via_otp",
+                    "Sales Order-custom_current_date",
+                    "Sales Order-custom_time",
+                    "Sales Order-custom_is_unicommerce",
+                ],
+            ]
+        ],
+    },
+    {
+        "doctype": "Web Page",
+        "filters": [
+            [
+                "name",
+                "in",
+                [
+                    "orderr-conformationn",
+                ],
+            ]
+        ],
+    },
+]
+
+
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps

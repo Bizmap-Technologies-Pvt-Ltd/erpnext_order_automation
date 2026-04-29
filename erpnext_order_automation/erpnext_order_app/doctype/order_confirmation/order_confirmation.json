@@ -21,6 +21,7 @@
   "transaction_date",
   "delivery_date",
   "confirmation_url",
+  "sales_order",
   "status",
   "column_break1",
   "po_no",
@@ -28,6 +29,7 @@
   "company",
   "skip_delivery_note",
   "amended_from",
+  "verified",
   "items_section",
   "items",
   "section_break_31",
@@ -330,13 +332,13 @@
    "read_only": 1
   },
   {
+   "fetch_from": "contact_person.mobile_no",
    "fieldname": "contact_mobile",
    "fieldtype": "Small Text",
    "hide_days": 1,
    "hide_seconds": 1,
    "label": "Mobile No",
-   "options": "Phone",
-   "read_only": 1
+   "options": "Phone"
   },
   {
    "fieldname": "contact_email",
@@ -866,13 +868,13 @@
    "options": "\nOrder Confirmed\nCanclled"
   },
   {
+   "fetch_from": "contact_person.phone",
    "fieldname": "contact_phone",
    "fieldtype": "Data",
    "hide_days": 1,
    "hide_seconds": 1,
    "label": "Phone",
-   "options": "Phone",
-   "read_only": 1
+   "options": "Phone"
   },
   {
    "default": "0",
@@ -960,12 +962,25 @@
    "fieldtype": "Data",
    "label": "Confirmation URL",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "verified",
+   "fieldtype": "Check",
+   "label": "Verified"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-10 15:09:04.681659",
+ "modified": "2026-04-24 11:06:52.909774",
  "modified_by": "Administrator",
  "module": "ERPNext Order App",
  "name": "Order Confirmation",
@@ -1034,6 +1049,8 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "status,transaction_date,customer,customer_name, territory,order_type,company",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

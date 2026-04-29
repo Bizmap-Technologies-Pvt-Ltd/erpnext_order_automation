@@ -1,0 +1,24 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Order Confirmation",
+  "enabled": 1,
+  "modified": "2026-04-21 20:29:59.501004",
+  "module": "ERPNext Order App",
+  "name": "Order Confirmation Whatsapp Msg",
+  "script": "frappe.ui.form.on(\"Order Confirmation\", {\r\n    refresh(frm) {\r\n        if (!frm.is_new()) {\r\n            frm.add_custom_button(\"Send Whatsapp Msg\", function () {\r\n                frappe.call({\r\n                    method: \"erpnext_order_automation.erpnext_order_app.doctype.order_confirmation.order_confirmation.resend_order_confirmation_whatsapp\",\r\n                    args: {\r\n                        order_confirmation: frm.doc.name\r\n                    },\r\n                    freeze: true,\r\n                    freeze_message: \"Sending WhatsApp message...\",\r\n                    callback: function (r) {\r\n                        if (r.message && r.message.status === \"success\") {\r\n                            frappe.msgprint(\"WhatsApp message sent successfully\");\r\n                            frm.reload_doc();\r\n                        } else {\r\n                            frappe.msgprint({\r\n                                title: \"Failed\",\r\n                                message: (r.message && r.message.message) || \"Unable to send WhatsApp message\",\r\n                                indicator: \"red\"\r\n                            });\r\n                        }\r\n                    }\r\n                });\r\n            });\r\n        }\r\n    }\r\n});",
+  "view": "Form"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Order Confirmation",
+  "enabled": 1,
+  "modified": "2026-04-24 14:54:35.211241",
+  "module": "ERPNext Order App",
+  "name": "Order Conformation contact filter",
+  "script": "frappe.ui.form.on(\"Order Confirmation\", {\r\n    setup(frm) {\r\n        frm.set_query(\"contact_person\", function () {\r\n            if (!frm.doc.customer) {\r\n                return {\r\n                    filters: {\r\n                        name: [\"=\", \"\"]\r\n                    }\r\n                };\r\n            }\r\n\r\n            return {\r\n                query: \"frappe.contacts.doctype.contact.contact.contact_query\",\r\n                filters: {\r\n                    link_doctype: \"Customer\",\r\n                    link_name: frm.doc.customer\r\n                }\r\n            };\r\n        });\r\n    },\r\n\r\n    customer(frm) {\r\n        frm.set_value(\"contact_person\", \"\");\r\n    }\r\n});",
+  "view": "Form"
+ }
+]
