@@ -44,6 +44,7 @@ required_apps = ["erpnext", "otp_generation"]
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Sales Order": "public/js/sales_order.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -143,8 +144,25 @@ doc_events = {
     }
 }
 
+# Customer confirmation page: /order-confirmation/<secure key or name> (www/order-confirmation.html)
+website_route_rules = [
+    {"from_route": "/order-confirmation/<name>", "to_route": "order-confirmation"},
+]
+
+after_migrate = [
+    "erpnext_order_automation.erpnext_order_app.risk.setup_custom_fields",
+    "erpnext_order_automation.erpnext_order_app.skip_confirmation.setup_custom_fields",
+]
+
 # Scheduled Tasks
 # ---------------
+
+scheduler_events = {
+    # DB-IP Lite + VPN lists for the order confirmation risk check (new DB-IP file monthly)
+    "monthly_long": [
+        "erpnext_order_automation.erpnext_order_app.risk.update_risk_data",
+    ],
+}
 
 # scheduler_events = {
 # 	"all": [

@@ -1,0 +1,2344 @@
+{% extends "templates/web.html" %}
+
+{#- Customer order confirmation page (moved from Web Page "orderr-conformationn").
+    Context: erpnext_order_automation/www/order_confirmation.py -#}
+
+{% block page_content %}
+<div class="webpage-content">
+<article class="web-page-content" id="orderr-conformationn" style="text-align: Left">
+{% set currency = doc.currency or oc.currency or "INR" %}
+{% set currency_symbols = {
+    "INR": "₹",
+    "USD": "$",
+    "EUR": "€",
+    "GBP": "£",
+    "AED": "د.إ",
+    "SAR": "﷼"
+} %}
+{% set currency_symbol = currency_symbols.get(currency, currency + " ") %}
+{% if not oc %}
+    <div style="padding:20px; color:red; font-weight:bold;">
+        Invalid or missing Order Confirmation.
+    </div>
+{% else %}
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary: #1e40af;
+    --primary-light: #3b82f6;
+    --primary-dark: #1e3a8a;
+    --success: #059669;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --info: #0891b2;
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f5f9;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #64748b;
+    --border-color: #e2e8f0;
+    --border-color-dark: #cbd5e1;
+    --accent-green: #22c55e;
+    --accent-gold: #f59e0b;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-tertiary) 100%);
+    min-height: 100vh;
+    padding: 24px 16px;
+    color: var(--text-primary);
+    overflow-x: hidden;
+}
+
+.container {
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* ===== HEADER ===== */
+.header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
+    color: var(--accent-green);
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    border: 2px solid var(--accent-green);
+    letter-spacing: 0.5px;
+    max-width: 100%;
+}
+
+.header-badge::before {
+    content: "✓";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: var(--accent-green);
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+    word-break: break-word;
+}
+
+.header-subtitle {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    line-height: 1.6;
+    word-break: break-word;
+}
+
+/* ===== RISK / VERIFICATION BANNER ===== */
+.risk-banner {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+    border: 2px solid var(--accent-gold);
+    border-radius: var(--radius-lg);
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    box-shadow: 0 4px 12px rgba(120, 53, 15, 0.08);
+    min-width: 0;
+}
+
+.risk-banner-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.risk-banner-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.risk-banner-title {
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 6px;
+    font-size: 0.98rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.risk-banner-text {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.risk-score {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-top: 10px;
+    box-shadow: 0 2px 4px rgba(120, 53, 15, 0.1);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    max-width: 100%;
+    flex-wrap: wrap;
+}
+
+.risk-score.verified {
+    color: var(--accent-green);
+    border: 2px solid var(--accent-green);
+}
+
+.risk-score.unverified {
+    color: var(--warning);
+    border: 2px solid var(--warning);
+}
+
+/* ===== GRID & CARDS ===== */
+.main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    min-width: 0;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-color-dark);
+}
+
+.card.full-width {
+    grid-column: 1 / -1;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border-color);
+    min-width: 0;
+}
+
+.card-header-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--accent-gold), var(--primary-light));
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.card-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    min-width: 0;
+    word-break: break-word;
+}
+
+/* ===== ORDER SUMMARY ===== */
+.order-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.summary-card {
+    background: var(--bg-primary);
+    padding: 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    text-align: center;
+    min-width: 0;
+}
+
+.summary-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.summary-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary);
+    word-break: break-word;
+}
+
+/* ===== DETAILS ===== */
+.detail-group { 
+    margin-bottom: 20px; 
+}
+
+.group-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 8px;
+    word-break: break-word;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.95rem;
+    min-width: 0;
+}
+
+.detail-row:last-child { 
+    border-bottom: none; 
+}
+
+.detail-label { 
+    color: var(--text-secondary); 
+    font-weight: 500; 
+    flex: 0 0 40%;
+    min-width: 0;
+}
+
+.detail-value { 
+    color: var(--text-primary); 
+    font-weight: 600; 
+    text-align: right;
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.detail-value.verified { color: var(--success); }
+.detail-value.unverified { color: var(--warning); }
+
+/* ===== ADDRESS ===== */
+.address-section { 
+    margin-bottom: 16px; 
+}
+
+.address-box {
+    background: var(--bg-primary);
+    padding: 16px;
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--primary-light);
+    margin-bottom: 12px;
+    min-width: 0;
+}
+
+.address-label {
+    font-size: 1rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    word-break: break-word;
+}
+
+.address-text {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.address-verify {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--success);
+    font-weight: 600;
+}
+
+.address-verify::before {
+    content: "✓";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: var(--success);
+    color: white;
+    border-radius: 50%;
+    font-size: 10px;
+}
+
+/* ===== TABLE ===== */
+.table-responsive {
+    width: 100%;
+    /* overflow-x: scroll;   force scroll always */
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-md);
+}
+.table-responsive {
+    overflow-x: auto;
+}
+
+.item-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 680px;
+}
+
+.item-table th,
+.item-table td {
+    vertical-align: middle;
+}
+
+.item-table th.col-item,
+.item-table td.col-item {
+    text-align: left;
+}
+
+.item-table th.col-center,
+.item-table td.col-center {
+    text-align: center;
+}
+
+.item-table th.col-right,
+.item-table td.col-right {
+    text-align: right;
+}
+
+.item-table .product-name {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.35;
+    margin-bottom: 2px;
+}
+
+.item-table .product-description {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+
+.item-table th {
+    white-space: nowrap;
+}
+
+.item-table td {
+    word-wrap: break-word;
+}
+
+/* ===== PRODUCTS TABLE ===== */
+.products-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+}
+
+.products-table thead { 
+    background: var(--bg-primary); 
+    border-bottom: 2px solid var(--border-color); 
+}
+
+.products-table th {
+    padding: 12px;
+    text-align: left;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    letter-spacing: 0.5px;
+}
+
+.products-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.products-table tbody tr:hover { 
+    background: var(--bg-tertiary); 
+}
+
+.product-name { 
+    font-weight: 600; 
+    color: var(--text-primary); 
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.product-description { 
+    font-size: 0.8rem; 
+    color: var(--text-secondary); 
+    margin-top: 2px; 
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.amount { 
+    font-weight: 600; 
+    color: var(--primary-light); 
+}
+
+/* ===== TOTALS ===== */
+.totals-box { 
+    background: var(--bg-tertiary); 
+    padding: 16px; 
+    border-radius: var(--radius-md); 
+    margin-top: 16px; 
+    border: 1px solid var(--border-color); 
+}
+
+.total-row { 
+    display:flex; 
+    justify-content:space-between; 
+    gap: 12px;
+    padding:8px 0; 
+    font-size:0.95rem; 
+    border-bottom:1px solid var(--border-color); 
+}
+
+.total-row:last-child { 
+    border-bottom:none; 
+}
+
+.total-row.final { 
+    border-top:2px solid var(--border-color); 
+    padding-top:12px; 
+    margin-top:12px; 
+    font-size:1.1rem; 
+    font-weight:700; 
+}
+
+.total-label { 
+    color: var(--text-secondary); 
+    min-width: 0;
+}
+
+.total-value { 
+    font-weight:600; 
+    color: var(--text-primary); 
+    text-align: right;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.total-row.final .total-value { 
+    color: var(--success); 
+    font-size:1.2rem; 
+}
+
+/* ===== SECURITY SIGNALS ===== */
+.security-signals { background: linear-gradient(135deg, rgba(30,64,175,0.08) 0%, rgba(59,130,246,0.05) 100%); border:1px solid rgba(59,130,246,0.2); border-radius: var(--radius-lg); padding:20px; margin-bottom:24px; }
+.security-info { font-size:0.8rem; color: var(--text-secondary); margin-bottom:16px; line-height:1.5; padding:12px; background:white; border-radius:var(--radius-md); border-left:3px solid var(--primary-light); }
+.signals-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:16px; }
+.signal-item { background:white; padding:12px; border-radius:var(--radius-md); border:1px solid var(--border-color); }
+.signal-label { font-size:0.75rem; text-transform:uppercase; font-weight:700; color:var(--text-tertiary); letter-spacing:0.3px; margin-bottom:6px; }
+.signal-value { font-size:0.9rem; font-weight:600; color:var(--text-primary); word-break: break-all; font-family:'Courier New', monospace; }
+.signal-match { font-size:0.75rem; margin-top:6px; padding:4px 8px; background:rgba(34,197,94,0.1); border-radius:4px; color:var(--success); font-weight:600; }
+.signal-match.mismatch { background:rgba(220,38,38,0.1); color:var(--danger); }
+.risk-assessment { background:white; padding:12px; border-radius:var(--radius-md); border-left:4px solid var(--success); }
+.risk-assessment.medium { border-left-color:var(--warning); }
+.risk-assessment.high { border-left-color:var(--danger); }
+.risk-label { font-size:0.75rem; text-transform:uppercase; font-weight:700; color:var(--text-tertiary); letter-spacing:0.3px; margin-bottom:6px; }
+.risk-value { font-size:1rem; font-weight:700; color:var(--success); }
+.risk-value.medium { color: var(--warning); }
+.risk-value.high { color: var(--danger); }
+
+/* ===== HIDE FRAUD / SECURITY SECTION ===== */
+.security-signals,
+.fraud-section,
+#fraudSection,
+#risk-assessment-box,
+.signals-grid,
+.security-info {
+    display: none !important;
+}
+
+/* ===== OTP SECTION ===== */
+.otp-container { 
+    display:grid; 
+    grid-template-columns:1fr 1fr; 
+    gap:24px; 
+    align-items: stretch;
+}
+
+.otp-section { 
+    background: linear-gradient(135deg, #fef3c7 0%, #fef08a 100%); 
+    border:2px dashed var(--warning); 
+    border-radius:var(--radius-lg); 
+    padding:20px; 
+    min-width: 0;
+}
+
+.otp-section-title { 
+    font-size:0.95rem; 
+    font-weight:700; 
+    color:var(--text-primary); 
+    text-transform:uppercase; 
+    letter-spacing:0.5px; 
+    margin-bottom:12px; 
+    display:flex; 
+    align-items:center; 
+    gap:8px; 
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.otp-description { 
+    font-size:0.85rem; 
+    color:var(--text-secondary); 
+    line-height:1.6; 
+    margin-bottom:12px; 
+    word-break: break-word;
+}
+
+.otp-code-display { 
+    background:white; 
+    padding:16px; 
+    border-radius:var(--radius-md); 
+    text-align:center; 
+    margin-bottom:12px; 
+    border:2px solid var(--border-color); 
+    font-family:'Courier New', monospace; 
+    font-size:1.6rem; 
+    font-weight:700; 
+    color:var(--warning); 
+    letter-spacing:12px; 
+    min-height:64px; 
+    display:flex; 
+    align-items:center; 
+    justify-content:center; 
+    transition: var(--transition); 
+    overflow: hidden;
+}
+
+.otp-code-display.error { border-color: var(--danger); color: var(--danger); background: rgba(220,38,38,0.05); }
+.otp-code-display.success { border-color: var(--success); color: var(--success); background: rgba(5,150,105,0.05); }
+
+.otp-info { 
+    font-size:0.8rem; 
+    color: var(--text-secondary); 
+    margin-bottom:12px; 
+    line-height:1.5; 
+    background:white; 
+    padding:10px; 
+    border-radius:var(--radius-sm); 
+}
+
+.timer { 
+    font-size:0.9rem; 
+    font-weight:600; 
+    margin-bottom:12px; 
+    text-align:center; 
+    color:var(--warning); 
+}
+
+.timer.expired { color: var(--danger); }
+
+.btn-generate { 
+    width:100%; 
+    padding:12px; 
+    background:linear-gradient(135deg, var(--warning), #f59e0b); 
+    color:white; 
+    border:none; 
+    border-radius:var(--radius-md); 
+    font-size:0.95rem; 
+    font-weight:600; 
+    cursor:pointer; 
+    transition:var(--transition); 
+    text-transform:uppercase; 
+    letter-spacing:0.5px; 
+    box-shadow:0 4px 12px rgba(217,119,6,0.2); 
+}
+
+.btn-generate:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 6px 16px rgba(217,119,6,0.3); }
+.btn-generate:disabled { opacity:0.6; cursor:not-allowed; }
+
+.otp-inputs { 
+    display:flex; 
+    gap:8px; 
+    margin-bottom:12px; 
+    justify-content:center; 
+    flex-wrap: nowrap;
+}
+
+.otp-input { 
+    width:45px; 
+    height:50px; 
+    border:2px solid var(--border-color); 
+    border-radius:var(--radius-sm); 
+    text-align:center; 
+    font-size:1.3rem; 
+    font-weight:700; 
+    font-family:'Courier New', monospace; 
+    transition:var(--transition); 
+    background:white; 
+    color:var(--text-primary); 
+    min-width: 0;
+}
+
+.otp-input:focus { outline:none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.otp-input.error { border-color:var(--danger); animation: shake 0.4s; }
+.otp-input.success { border-color:var(--success); background: rgba(5,150,105,0.05); }
+
+/* ===== VERIFICATION STATUS ===== */
+.verification-status { background: var(--bg-primary); padding:16px; border-radius:var(--radius-md); text-align:center; margin-bottom:12px; border-left:4px solid var(--border-color); display:none; }
+.verification-status.pending { border-left-color: var(--warning); background: rgba(217,119,6,0.05); }
+.verification-status.verified { border-left-color: var(--success); background: rgba(5,150,105,0.05); display:block; }
+.verification-status.error { border-left-color: var(--danger); background: rgba(220,38,38,0.05); display:block; }
+.status-icon { font-size:1.8rem; margin-bottom:6px; display:block; }
+.status-text { font-weight:600; font-size:0.9rem; color:var(--text-primary); word-break: break-word; }
+
+/* ===== SUCCESS MODAL ===== */
+.success-modal {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.success-content {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 24px;
+    padding: 34px 30px 28px;
+    text-align: center;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+    animation: fadeInUp 0.35s ease-in-out;
+    position: relative;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    overflow: hidden;
+}
+
+.success-content::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(135deg, var(--success), var(--primary-light));
+}
+
+.success-checkmark {
+    width: 88px;
+    height: 88px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(5,150,105,0.16), rgba(34,197,94,0.10));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--success);
+    font-size: 42px;
+    box-shadow: inset 0 0 0 6px rgba(5,150,105,0.08);
+    animation: scaleAndShrink 0.4s ease-in-out;
+}
+
+.checkmark-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--success), #10b981);
+    color: white;
+    font-size: 28px;
+    font-weight: 800;
+    box-shadow: 0 10px 20px rgba(5,150,105,0.25);
+}
+
+.success-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+    word-break: break-word;
+}
+
+.success-message {
+    font-size: 0.96rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.7;
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.success-button,
+.success-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 170px;
+    padding: 13px 24px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 10px 24px rgba(30, 64, 175, 0.25);
+    max-width: 100%;
+}
+
+.success-button:hover,
+.success-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(30, 64, 175, 0.30);
+}
+
+.success-button:active,
+.success-btn:active {
+    transform: translateY(0);
+}
+
+/* ===== BUTTONS ===== */
+.btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color:white; padding:12px 20px; border:none; border-radius:var(--radius-md); cursor:pointer; font-weight:600; transition:var(--transition); }
+.btn-primary:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(59,130,246,0.3); }
+.btn-secondary { background:white; border:2px solid var(--primary-light); color:var(--primary); padding:12px 20px; border-radius:var(--radius-md); cursor:pointer; font-weight:600; transition:var(--transition); }
+.btn-secondary:hover { background:var(--primary-light); color:white; }
+
+/* ===== ALERTS ===== */
+.alert-success { background: rgba(5,150,105,0.1); border-left:4px solid var(--success); padding:12px; border-radius:var(--radius-sm); color:var(--success); font-weight:600; margin-bottom:12px; }
+.alert-error { background: rgba(220,38,38,0.1); border-left:4px solid var(--danger); padding:12px; border-radius:var(--radius-sm); color:var(--danger); font-weight:600; margin-bottom:12px; }
+.alert-warning { background: rgba(245,158,11,0.1); border-left:4px solid var(--warning); padding:12px; border-radius:var(--radius-sm); color:var(--warning); font-weight:600; margin-bottom:12px; }
+
+/* ===== ACTION BUTTON AREA ===== */
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 28px;
+    padding-top: 10px;
+    width: 100%;
+}
+
+.action-buttons .btn,
+.action-buttons .btn-primary {
+    min-width: 220px;
+    padding: 14px 28px;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 14px;
+    letter-spacing: 0.4px;
+    box-shadow: 0 8px 20px rgba(30, 64, 175, 0.18);
+    max-width: 100%;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes shake {
+    0%,100% { transform:translateX(0); }
+    25% { transform:translateX(-4px); }
+    50% { transform:translateX(4px); }
+    75% { transform:translateX(-4px); }
+}
+@keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+@keyframes fadeInUp { from {opacity:0; transform:translateY(10px);} to {opacity:1; transform:translateY(0);} }
+@keyframes scaleAndShrink { 0% { transform: scale(0.3); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes sparkleFloat { 0% { transform:translateY(0); opacity:1; } 100% { transform:translateY(-30px); opacity:0; } }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .container {
+        max-width: 100%;
+    }
+
+    .main-grid,
+    .otp-container {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .card {
+        padding: 20px;
+    }
+
+    .order-summary-grid,
+    .signals-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 14px 10px;
+    }
+
+    .container {
+        width: 100%;
+    }
+
+    .header {
+        margin-bottom: 22px;
+    }
+
+    .header h1 {
+        font-size: 1.55rem;
+        line-height: 1.25;
+    }
+
+    .header-subtitle {
+        font-size: 0.92rem;
+        line-height: 1.5;
+    }
+
+    .header-badge {
+        font-size: 0.75rem;
+        padding: 8px 14px;
+    }
+
+    .risk-banner {
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px;
+        margin-bottom: 18px;
+    }
+
+    .risk-banner-icon {
+        font-size: 20px;
+    }
+
+    .risk-banner-title {
+        font-size: 0.9rem;
+    }
+
+    .risk-banner-text {
+        font-size: 0.82rem;
+    }
+
+    .risk-score {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .main-grid,
+    .order-summary-grid,
+    .otp-container,
+    .signals-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .card {
+        padding: 16px;
+        border-radius: 14px;
+    }
+
+    .card-header {
+        gap: 10px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+    }
+
+    .card-header-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 18px;
+    }
+
+    .card-header h2 {
+        font-size: 1rem;
+        line-height: 1.3;
+    }
+
+    .summary-card {
+        padding: 12px;
+    }
+
+    .summary-value {
+        font-size: 1.05rem;
+    }
+
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        padding: 10px 0;
+    }
+
+    .detail-label,
+    .detail-value {
+        width: 100%;
+        text-align: left;
+    }
+
+    .address-box {
+        padding: 12px;
+    }
+
+    .address-label {
+        font-size: 0.88rem;
+        line-height: 1.4;
+    }
+
+    .address-text {
+        font-size: 0.85rem;
+        line-height: 1.55;
+    }
+
+    .table-responsive {
+        margin: 0 -2px;
+    }
+
+    .item-table {
+        min-width: 680px;
+    }
+
+    .products-table th,
+    .products-table td {
+        padding: 10px 8px;
+        font-size: 0.82rem;
+    }
+
+    .item-table .product-name {
+        font-size: 0.86rem;
+        white-space: normal;
+        min-width: 180px;
+    }
+
+    .item-table .product-description {
+        font-size: 0.76rem;
+        white-space: normal;
+    }
+
+    .totals-box {
+        padding: 12px;
+    }
+
+    .total-row {
+        gap: 10px;
+        font-size: 0.88rem;
+    }
+
+    .total-row.final {
+        font-size: 1rem;
+    }
+
+    .total-row.final .total-value {
+        font-size: 1.05rem;
+    }
+
+    .otp-section {
+        padding: 16px;
+    }
+
+    .otp-section-title {
+        font-size: 0.88rem;
+        line-height: 1.4;
+    }
+
+    .otp-description,
+    .otp-info {
+        font-size: 0.8rem;
+    }
+
+    .otp-code-display {
+        font-size: 1.2rem;
+        letter-spacing: 8px;
+        min-height: 54px;
+        padding: 12px;
+    }
+
+    .otp-inputs {
+        gap: 6px;
+    }
+
+    .otp-input {
+        width: 40px;
+        height: 46px;
+        font-size: 1.1rem;
+    }
+
+    .btn-generate,
+    .action-buttons .btn,
+    .action-buttons .btn-primary,
+    .success-button,
+    .success-btn {
+        width: 100%;
+        min-width: 100%;
+        padding: 12px 16px;
+        font-size: 0.92rem;
+    }
+
+    .action-buttons {
+        margin-top: 20px;
+    }
+
+    .success-content {
+        max-width: 100%;
+        padding: 26px 18px 22px;
+        border-radius: 18px;
+    }
+
+    .success-title {
+        font-size: 1.2rem;
+    }
+
+    .success-message {
+        font-size: 0.88rem;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px 8px;
+    }
+
+    .header h1 {
+        font-size: 1.35rem;
+    }
+
+    .header-subtitle {
+        font-size: 0.85rem;
+    }
+
+    .card {
+        padding: 14px;
+    }
+
+    .card-header h2 {
+        font-size: 0.95rem;
+    }
+
+    .products-table th,
+    .products-table td {
+        padding: 8px 6px;
+        font-size: 0.78rem;
+    }
+
+    .otp-inputs {
+        gap: 5px;
+    }
+
+    .otp-input {
+        width: 36px;
+        height: 42px;
+        font-size: 1rem;
+    }
+
+    .otp-code-display {
+        letter-spacing: 6px;
+        font-size: 1rem;
+    }
+
+    .risk-banner,
+    .otp-section,
+    .totals-box,
+    .address-box {
+        border-radius: 12px;
+    }
+}
+
+.table-wrapper {
+    position: relative;
+}
+
+.table-wrapper::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 40px;
+    height: 100%;
+    background: linear-gradient(to left, white, transparent);
+    pointer-events: none;
+}
+
+@media (min-width: 768px) {
+    .table-wrapper::after {
+        display: none;
+    }
+}
+
+/* ===== PRINT ===== */
+@media print {
+    body { background:none; padding:0; }
+    .btn-primary, .btn-secondary, .otp-section, .success-modal, .header-badge { display:none !important; }
+    .card, .products-table, .totals-box { box-shadow:none; border:none; background:white; }
+}
+</style>
+
+<div class="container">
+
+    {% if oc.verified %}
+
+        <!-- Already Confirmed View -->
+        <div class="header">
+            <div class="header-badge">✓ Order Confirmed</div>
+            <h1>{{ oc.customer_name }}</h1>
+            <p class="header-subtitle">This order has already been verified and confirmed.</p>
+        </div>
+
+        <div class="risk-banner">
+            <div class="risk-banner-icon">✅</div>
+            <div class="risk-banner-content">
+                <div class="risk-banner-title">Order Already Confirmed</div>
+                <div class="risk-banner-text">
+                    Your order has been confirmed. A copy of the order confirmation has been emailed to your email address <strong>{{ contact_email }}</strong>.
+                </div>
+                <div class="risk-score verified">
+                    <span>✓ Status: VERIFIED</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-icon">📦</div>
+                    <h2>Customer Details</h2>
+                </div>
+
+                <div class="detail-group">
+                    <div class="group-title">Order Information</div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Order ID</span>
+                        <span class="detail-value">{{ oc.name }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Order Date</span>
+                        <span class="detail-value">{{ oc.transaction_date }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Order Status</span>
+                        <span class="detail-value verified">✓ Verified</span>
+                    </div>
+                </div>
+
+                <div class="detail-group">
+                    <div class="group-title">Customer Information</div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Customer Name</span>
+                        <span class="detail-value">{{ oc.customer_name }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Email</span>
+                        <span class="detail-value">{{ contact_email }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Phone</span>
+                        <span class="detail-value">{{ contact_phone }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-icon">📍</div>
+                    <h2>Delivery Details</h2>
+                </div>
+
+                <div class="address-section">
+                    <div class="address-box">
+                        <div class="address-label">📦 Shipping Address</div>
+                        <div class="address-text">{{ oc.shipping_address or "No Shipping Address" }}</div>
+                    </div>
+                </div>
+
+                <div class="address-section">
+                    <div class="address-box">
+                        <div class="address-label">💳 Billing Address</div>
+                        <div class="address-text">{{ oc.address_display or "No Billing Address" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card full-width">
+                <div class="card-header">
+                    <div class="card-header-icon">🛍️</div>
+                    <h2>Order Items & Pricing</h2>
+                </div>
+                <div style="font-size:12px; color:#666; margin-bottom:5px;">
+                    👉 Scroll horizontally to view more
+                </div>
+                <div class="table-wrapper">
+                <div class="table-responsive">
+                    <table class="products-table item-table">
+                        <colgroup>
+                            <col style="width: 36%;">
+                            <col style="width: 10%;">
+                            <col style="width: 10%;">
+                            <col style="width: 14%;">  <!-- Incoterms -->
+                            <col style="width: 15%;">
+                            <col style="width: 15%;">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th class="col-item">Item Name</th>
+                                <th class="col-center">Qty</th>
+                                <th class="col-center">UOM</th>
+                                <th class="col-center">Incoterms</th>
+                                <th class="col-right">Rate</th>
+                                <th class="col-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if doc and doc.get("items") %}
+                                {% for item in doc.get("items") %}
+                                <tr>
+                                    <td class="col-item">
+                                        <div class="product-name">{{ item.item_name or "" }}</div>
+                                        <div class="product-description">{{ item.description or "" }}</div>
+                                    </td>
+                                    <td class="col-center">{{ item.qty or 0 }}</td>
+                                    <td class="col-center">{{ item.uom or "" }}</td>
+                                    <td class="col-center">
+                                        {{ oc.custom_shipping_terms or "-" }}
+                                    </td>
+                                    <td class="col-right">{{ currency_symbol }} {{ "{:,.2f}".format((item.rate or 0) | float) }}</td>
+                                    <td class="col-right">
+                                        <span class="amount">{{ currency_symbol }} {{ "{:,.2f}".format((item.amount or 0) | float) }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" style="text-align:center;">No items found</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                </div>
+
+                <div class="totals-box">
+                    <div class="total-row">
+                        <span class="total-label">Subtotal</span>
+                        <span class="total-value">{{ currency_symbol }} {{ "{:,.2f}".format((doc.total if doc else 0) | float) }}</span>
+                    </div>
+                    
+                    <div class="total-row">
+                        <span class="total-label">Shipping Charges</span>
+                        <span class="total-value">{{ currency_symbol }} {{ "{:,.2f}".format((0) | float) }}</span>
+                    </div>
+                    
+                    <div class="total-row">
+                        <span class="total-label">Tax</span>
+                        <span class="total-value">{{ currency_symbol }} {{ "{:,.2f}".format((doc.total_taxes_and_charges if doc else 0) | float) }}</span>
+                    </div>
+                    
+                    
+                    <div class="total-row final">
+                        <span class="total-label">Total Order Value</span>
+                        <span class="total-value">{{ currency_symbol }} {{ "{:,.2f}".format((doc.grand_total if doc else 0) | float) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+
+        <!-- Verification Flow View -->
+        <div class="header">
+            <div class="header-badge">✓ Order Pending for Verification</div>
+            <h1>{{ doc.customer_name }}</h1>
+            <p class="header-subtitle">Verify Your Export Order Details </p>
+        </div>
+
+        <div class="risk-banner">
+            <div class="risk-banner-content">
+                <div class="risk-banner-title">Verification Required</div>
+                <div class="risk-banner-text">
+                    Please review your order details carefully. All information must be accurate.
+                </div>
+                <div class="risk-score unverified" id="verificationBadge">
+                    <span>⏳ Status: PENDING VERIFICATION</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-icon">📦</div>
+                    <h2>Customer Details</h2>
+                </div>
+
+                <div class="detail-group">
+                    <div class="group-title">Order Information</div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Order ID</span>
+                        <span class="detail-value">{{ doc.name }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Order Date</span>
+                        <span class="detail-value">{{ doc.transaction_date }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Order Status</span>
+                        <span class="detail-value unverified" id="orderStatus">⏳ Unverified</span>
+                    </div>
+                </div>
+
+                <div class="detail-group">
+                    <div class="group-title">Customer Information</div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Customer Name</span>
+                        <span class="detail-value">{{ doc.customer_name }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Email</span>
+                        <span class="detail-value">{{ contact_email }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Phone</span>
+                        <span class="detail-value">{{ contact_phone }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-icon">📍</div>
+                    <h2>Delivery Details</h2>
+                </div>
+
+                <div class="address-section">
+                    <div class="address-box">
+                        <div class="address-label">📦 Shipping Address</div>
+                        <div class="address-text">{{ oc.shipping_address or "No Shipping Address" }}</div>
+                    </div>
+                </div>
+
+                <div class="address-section">
+                    <div class="address-box">
+                        <div class="address-label">💳 Billing Address</div>
+                        <div class="address-text">{{ oc.address_display or "No Billing Address" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card full-width">
+            <div class="card-header">
+                <div class="card-header-icon">🛍️</div>
+                <h2>Order Items & Pricing</h2>
+            </div>
+            <div style="font-size:12px; color:#666; margin-bottom:5px;">
+                👉 Scroll horizontally to view more
+            </div>
+            <div class="table-wrapper"> 
+            <div class="table-responsive">
+                <table class="products-table item-table">
+                <colgroup>
+                    <col style="width: 36%;">
+                    <col style="width: 10%;">
+                    <col style="width: 10%;">
+                    <col style="width: 14%;">  <!-- Incoterms -->
+                    <col style="width: 15%;">
+                    <col style="width: 15%;">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="col-item">Item Name</th>
+                        <th class="col-center">Qty</th>
+                        <th class="col-center">UOM</th>
+                        <th class="col-center">Incoterms</th>
+                        <th class="col-right">Rate</th>
+                        <th class="col-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if doc and doc.get("items") %}
+                        {% for item in doc.get("items") %}
+                        <tr>
+                            <td class="col-item">
+                                <div class="product-name">{{ item.item_name or "" }}</div>
+                                <div class="product-description">{{ item.description or "" }}</div>
+                            </td>
+                            <td class="col-center">{{ item.qty or 0 }}</td>
+                            <td class="col-center">{{ item.uom or "" }}</td>
+                            <td class="col-center">
+                                {{ oc.custom_shipping_terms or "-" }}
+                            </td>
+                            <td class="col-right">{{ currency_symbol }} {{ "{:,.2f}".format((item.rate or 0) | float) }}</td>
+                            <td class="col-right">
+                                <span class="amount">{{ currency_symbol }} {{ "{:,.2f}".format((item.amount or 0) | float) }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align:center;">No items found</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        </div>
+        
+            <div class="totals-box">
+            <div class="total-row">
+                <span class="total-label">Subtotal</span>
+                <span class="total-value">{{ currency_symbol }} {{ "{:,.2f}".format((doc.total if doc else 0) | float) }}</span>
+            </div>
+            
+            <div class="total-row">
+                <span class="total-label">Shipping Charges</span>
+                <span class="total-value">{{ currency_symbol }} {{ "{:,.2f}".format((0) | float) }}</span>
+            </div>
+            
+            <div class="total-row">
+                <span class="total-label">Tax</span>
+                <span class="total-value">{{ currency_symbol }} {{ "{:,.2f}".format((doc.total_taxes_and_charges if doc else 0) | float) }}</span>
+            </div>
+            
+            <div class="total-row final">
+                <span class="total-label">Total Order Value</span>
+                <span class="total-value">{{ currency_symbol }} {{ "{:,.2f}".format((doc.grand_total if doc else 0) | float) }}</span>
+            </div>
+        </div>
+
+        <div class="card full-width" id="fraudSection">
+            <div class="card-header">
+                <div class="card-header-icon">🛡️</div>
+                <h2>Security Analysis & Fraud Prevention</h2>
+            </div>
+
+            <div class="security-info">
+                🔒 This section contains advanced fraud detection signals collected to verify order legitimacy. Your basic device and location information helps prevent fraudulent transactions. All data is encrypted and used for security purposes only.
+            </div>
+
+            <div class="signals-grid">
+                <div class="signal-item">
+                    <div class="signal-label">IP Address</div>
+                    <div class="signal-value" id="sig-ip">Detecting...</div>
+                </div>
+
+                <div class="signal-item">
+                    <div class="signal-label">Approx. Location</div>
+                    <div class="signal-value" id="sig-location">Detecting...</div>
+                    <div class="signal-match" id="sig-location-match"></div>
+                </div>
+
+                <div class="signal-item">
+                    <div class="signal-label">Device / OS</div>
+                    <div class="signal-value" id="sig-device">Detecting...</div>
+                </div>
+
+                <div class="signal-item">
+                    <div class="signal-label">Browser</div>
+                    <div class="signal-value" id="sig-browser">Detecting...</div>
+                </div>
+
+                <div class="signal-item">
+                    <div class="signal-label">Timezone</div>
+                    <div class="signal-value" id="sig-timezone">Detecting...</div>
+                    <div class="signal-match" id="sig-timezone-match"></div>
+                </div>
+
+                <div class="signal-item">
+                    <div class="signal-label">Screen Resolution</div>
+                    <div class="signal-value" id="sig-screen">Detecting...</div>
+                </div>
+
+                <div class="signal-item">
+                    <div class="signal-label">Language Setting</div>
+                    <div class="signal-value" id="sig-language">Detecting...</div>
+                </div>
+
+                <div class="signal-item">
+                    <div class="signal-label">Device ID (Hash)</div>
+                    <div class="signal-value" id="sig-fingerprint">Generating...</div>
+                </div>
+            </div>
+
+            <div class="risk-assessment" id="risk-assessment-box">
+                <div class="risk-label">Overall Risk Score</div>
+                <div class="risk-value" id="risk-score">LOW</div>
+            </div>
+            <div style="margin-top:8px; font-size:11px; color:#64748b;">
+                <a href="https://db-ip.com" target="_blank" rel="noopener" style="color:inherit;">IP Geolocation by DB-IP</a>
+            </div>
+        </div>
+
+        <div class="card full-width">
+            <div class="card-header">
+                <div class="card-header-icon">🔐</div>
+                <h2>Verify & Authorize Order</h2>
+            </div>
+
+            <div id="verificationAlert"></div>
+
+            <div class="otp-container">
+                <div class="otp-section">
+                    <div class="otp-section-title">💬 Step 1: Generate OTP</div>
+                    <p class="otp-description">
+                        A One-Time Password (OTP) will be sent to your WhatsApp number
+                        <strong>{{ masked_phone or "N/A" }}</strong>.
+                        This OTP authorization is required to verify this export order.
+                    </p>
+
+                    <button class="btn-generate" id="generateBtn" onclick="generateOTP()">
+                        💬 Send OTP via WhatsApp
+                    </button>
+
+                    <div class="timer hidden" id="timer"></div>
+
+                    <div class="otp-code-display" id="otpDisplay" style="display: none;">
+                        ••••••
+                    </div>
+                </div>
+
+                <div class="otp-section">
+                    <div class="otp-section-title">✅ Step 2: Enter OTP</div>
+                    <p class="otp-description">
+                        Enter the 6-digit OTP received on your WhatsApp. to verify and authorize your order.
+                    </p>
+
+                    <div class="verification-status pending" id="statusBox" style="display:block;">
+                        <div class="status-icon" id="statusIcon">⏳</div>
+                        <div class="status-text" id="statusText">Waiting for OTP generation...</div>
+                    </div>
+
+                    <div class="otp-inputs" id="otpInputContainer" style="display:none;">
+                        <input type="text" class="otp-input" id="otp1" maxlength="1" inputmode="numeric" placeholder="0" />
+                        <input type="text" class="otp-input" id="otp2" maxlength="1" inputmode="numeric" placeholder="0" />
+                        <input type="text" class="otp-input" id="otp3" maxlength="1" inputmode="numeric" placeholder="0" />
+                        <input type="text" class="otp-input" id="otp4" maxlength="1" inputmode="numeric" placeholder="0" />
+                        <input type="text" class="otp-input" id="otp5" maxlength="1" inputmode="numeric" placeholder="0" />
+                        <input type="text" class="otp-input" id="otp6" maxlength="1" inputmode="numeric" placeholder="0" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="confirmBtn" onclick="confirmOrder()" disabled>
+                    ✓ Verify Order
+                </button>
+            </div>
+        </div>
+
+        <div class="success-modal" id="successModal" style="display:none;">
+            <div class="success-content">
+                <div class="success-checkmark" id="checkmarkContainer">
+                    <div class="checkmark-circle">✓</div>
+                </div>
+                <h2 class="success-title">Order Verified Successfully!</h2>
+                <p class="success-message">
+                    Your order has been verified and is ready for processing. You will receive further instructions shortly.
+                </p>
+                <button class="success-button" onclick="closeSuccessModal()">Continue</button>
+            </div>
+        </div>
+
+        <script>
+            let fraudData = {
+                ip: null,
+                geo: {
+                    country: null,
+                    countryCode: null,
+                    city: null,
+                    region: null,
+                    timezone: null
+                },
+                device: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    screen: {
+                        width: window.screen.width,
+                        height: window.screen.height,
+                        colorDepth: window.screen.colorDepth,
+                        pixelDepth: window.screen.pixelDepth
+                    },
+                    hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
+                    deviceMemory: navigator.deviceMemory || 'unknown',
+                    cookiesEnabled: navigator.cookieEnabled,
+                    localStorage: !!window.localStorage,
+                    sessionStorage: !!window.sessionStorage
+                },
+                fingerprint: null,
+                collectedAt: new Date().toISOString(),
+                riskScore: 'LOW',
+                signals: {}
+            };
+
+            const shippingCountry = '{{ shipping_country }}';
+            const orderValue = parseFloat("{{ oc.grand_total or 0 }}") || 0;
+
+            let state = {
+                otpGenerated: false,
+                otpVerified: false,
+                attemptsLeft: 3,
+                timerInterval: null,
+                timeRemaining: 0,
+                otpCode: ''
+            };
+
+            document.addEventListener('DOMContentLoaded', function() {
+                collectFraudSignals();
+                setupOTPInputs();
+            });
+
+            async function collectFraudSignals() {
+                // IP, location and risk score are worked out on the server from the real
+                // request IP (DB-IP Lite + VPN/datacenter lists) and stored on the order
+                fraudData.fingerprint = generateDeviceFingerprint();
+                fraudData.collectedAt = new Date().toISOString();
+                try {
+                    const resp = await fetch(
+                        "/api/method/erpnext_order_automation.erpnext_order_app.risk.log_page_visit",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-Frappe-CSRF-Token": frappe.csrf_token
+                            },
+                            body: JSON.stringify({
+                                order_id: "{{ order_ref }}",
+                                device: {
+                                    userAgent: fraudData.device.userAgent,
+                                    platform: fraudData.device.platform,
+                                    language: fraudData.device.language,
+                                    timezone: fraudData.device.timezone,
+                                    screen: `${fraudData.device.screen.width}x${fraudData.device.screen.height}@${fraudData.device.screen.colorDepth}bit`,
+                                    hardwareConcurrency: fraudData.device.hardwareConcurrency,
+                                    deviceMemory: fraudData.device.deviceMemory,
+                                    fingerprint: fraudData.fingerprint
+                                }
+                            })
+                        }
+                    );
+                    const result = (await resp.json()).message;
+                    if (result) {
+                        fraudData.ip = result.ip || 'N/A';
+                        Object.assign(fraudData.geo, result.geo || {});
+                        fraudData.geo.country = fraudData.geo.country || 'Unknown';
+                        fraudData.signals = {};
+                        Object.entries(result.signals || {}).forEach(([key, value]) => {
+                            if (value !== null) fraudData.signals[key] = value;
+                        });
+                        fraudData.riskScore = result.riskScore || 'LOW';
+                    }
+                } catch (e) {
+                    console.warn('Risk check failed', e);
+                    fraudData.geo.country = 'Detection Failed';
+                }
+
+                updateSecurityUI();
+            }
+
+            function generateDeviceFingerprint() {
+                const fingerData = [
+                    navigator.userAgent,
+                    navigator.language,
+                    window.screen.width + 'x' + window.screen.height,
+                    navigator.hardwareConcurrency,
+                    navigator.deviceMemory,
+                    new Date().getTimezoneOffset(),
+                    navigator.cookieEnabled ? '1' : '0'
+                ].join('|');
+
+                let hash = 0;
+                for (let i = 0; i < fingerData.length; i++) {
+                    const char = fingerData.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash).toString(16);
+            }
+
+            function analyzeFraudSignals() {
+                fraudData.signals = {
+                    geoLocationMatch: fraudData.geo.countryCode === shippingCountry,
+                    timezoneMatch: checkTimezoneMatch(),
+                    orderValueThreshold: orderValue > 10000,
+                    firstTimeVerification: true,
+                    vpnProxy: checkVPNProxy(),
+                    unusualTimezone: detectUnusualTimezone()
+                };
+
+                let riskPoints = 0;
+                if (!fraudData.signals.geoLocationMatch) riskPoints += 40;
+                if (!fraudData.signals.timezoneMatch) riskPoints += 20;
+                if (fraudData.signals.vpnProxy) riskPoints += 50;
+                if (fraudData.signals.unusualTimezone) riskPoints += 15;
+                if (fraudData.signals.orderValueThreshold) riskPoints += 10;
+
+                if (riskPoints >= 80) {
+                    fraudData.riskScore = 'HIGH';
+                } else if (riskPoints >= 40) {
+                    fraudData.riskScore = 'MEDIUM';
+                } else {
+                    fraudData.riskScore = 'LOW';
+                }
+            }
+
+            function checkTimezoneMatch() {
+                const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                return userTz.includes('Asia') || userTz.includes('Kolkata');
+            }
+
+            function checkVPNProxy() {
+                if (fraudData.geo.asn && (fraudData.geo.asn.includes('VPN') || fraudData.geo.asn.includes('PROXY'))) {
+                    return true;
+                }
+                return false;
+            }
+
+            function detectUnusualTimezone() {
+                const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const shippingTz = 'Asia/Kolkata';
+                return userTz !== shippingTz && !userTz.includes('Asia');
+            }
+
+            function updateSecurityUI() {
+                const sigIp = document.getElementById('sig-ip');
+                const sigLocation = document.getElementById('sig-location');
+                const sigLocationMatch = document.getElementById('sig-location-match');
+                const sigDevice = document.getElementById('sig-device');
+                const sigBrowser = document.getElementById('sig-browser');
+                const sigTimezone = document.getElementById('sig-timezone');
+                const sigTimezoneMatch = document.getElementById('sig-timezone-match');
+                const sigScreen = document.getElementById('sig-screen');
+                const sigLanguage = document.getElementById('sig-language');
+                const sigFingerprint = document.getElementById('sig-fingerprint');
+                const riskBox = document.getElementById('risk-assessment-box');
+                const riskValue = document.getElementById('risk-score');
+            
+                if (sigIp) sigIp.textContent = fraudData.ip || 'Detection Failed';
+            
+                const locText = fraudData.geo.city && fraudData.geo.region
+                    ? `${fraudData.geo.city}, ${fraudData.geo.region}, ${fraudData.geo.country}`
+                    : fraudData.geo.country || 'Detecting...';
+            
+                if (sigLocation) sigLocation.textContent = locText;
+            
+                if (sigLocationMatch && fraudData.signals.geoLocationMatch !== undefined) {
+                    sigLocationMatch.textContent = fraudData.signals.geoLocationMatch
+                        ? '✓ Matches Shipping Country'
+                        : '⚠ Different from Shipping Country';
+                    sigLocationMatch.classList.toggle('mismatch', !fraudData.signals.geoLocationMatch);
+                }
+            
+                if (sigDevice) sigDevice.textContent = getOSInfo();
+                if (sigBrowser) sigBrowser.textContent = getBrowserInfo();
+            
+                const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if (sigTimezone) sigTimezone.textContent = userTz;
+            
+                if (sigTimezoneMatch && fraudData.signals.timezoneMatch !== undefined) {
+                    sigTimezoneMatch.textContent = fraudData.signals.timezoneMatch
+                        ? '✓ Expected Timezone'
+                        : '⚠ Unexpected Timezone';
+                    sigTimezoneMatch.classList.toggle('mismatch', !fraudData.signals.timezoneMatch);
+                }
+            
+                if (sigScreen) {
+                    sigScreen.textContent =
+                        `${fraudData.device.screen.width}x${fraudData.device.screen.height}@${fraudData.device.screen.colorDepth}bit`;
+                }
+            
+                if (sigLanguage) sigLanguage.textContent = fraudData.device.language;
+                if (sigFingerprint) sigFingerprint.textContent = fraudData.fingerprint;
+            
+                if (riskValue) {
+                    riskValue.textContent = fraudData.riskScore;
+                    riskValue.className = 'risk-value ' + fraudData.riskScore.toLowerCase();
+                }
+            
+                if (riskBox) {
+                    riskBox.className = 'risk-assessment ' + fraudData.riskScore.toLowerCase();
+                }
+            }
+
+            function getOSInfo() {
+                const ua = navigator.userAgent;
+                if (ua.indexOf('Win') > -1) return 'Windows';
+                if (ua.indexOf('Mac') > -1) return 'macOS';
+                if (ua.indexOf('Linux') > -1) return 'Linux';
+                if (ua.indexOf('Android') > -1) return 'Android';
+                if (ua.indexOf('like Mac') > -1) return 'iOS';
+                return 'Unknown OS';
+            }
+
+            function getBrowserInfo() {
+                const ua = navigator.userAgent;
+                if (ua.indexOf('Chrome') > -1) return 'Chrome';
+                if (ua.indexOf('Safari') > -1) return 'Safari';
+                if (ua.indexOf('Firefox') > -1) return 'Firefox';
+                if (ua.indexOf('Edge') > -1) return 'Edge';
+                return 'Other';
+            }
+
+            function setupOTPInputs() {
+                for (let i = 1; i <= 6; i++) {
+                    const input = document.getElementById("otp" + i);
+            
+                    input.addEventListener("input", async function(e) {
+                        const value = e.target.value;
+            
+                        if (!/^[0-9]?$/.test(value)) {
+                            e.target.value = "";
+                            return;
+                        }
+            
+                        if (value.length === 1 && i < 6) {
+                            document.getElementById("otp" + (i + 1)).focus();
+                        }
+            
+                        await verifyOTPInput();
+                    });
+            
+                    input.addEventListener("keydown", function(e) {
+                        if (e.key === "Backspace" && this.value === "" && i > 1) {
+                            document.getElementById("otp" + (i - 1)).focus();
+                        }
+                    });
+            
+                    input.addEventListener("paste", async function(e) {
+                        e.preventDefault();
+                        const paste = (e.clipboardData || window.clipboardData).getData("text");
+                        const digits = paste.replace(/\D/g, "").substring(0, 6).split("");
+            
+                        for (let j = 0; j < digits.length && j + i <= 6; j++) {
+                            document.getElementById("otp" + (i + j)).value = digits[j];
+                        }
+            
+                        await verifyOTPInput();
+                    });
+                }
+            }
+            async function storeFraudDataOnLoad() {
+                const order_id = "{{ order_ref }}";
+                const storageKey = `fraud_logged_${order_id}`;
+            
+                // avoid duplicate comment on refresh in same browser session
+                if (sessionStorage.getItem(storageKey)) {
+                    return;
+                }
+            
+                try {
+                    const resp = await fetch(
+                        "/api/method/erpnext_order_automation.erpnext_order_app.order.store_fraud_data",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-Frappe-CSRF-Token": frappe.csrf_token
+                            },
+                            body: JSON.stringify({
+                                order_id: order_id,
+                                fraud_data: fraudData
+                            })
+                        }
+                    );
+            
+                    const data = await resp.json();
+            
+                    if (data.message && data.message.status === "success") {
+                        sessionStorage.setItem(storageKey, "1");
+                        console.log("Fraud data stored successfully on page load");
+                    } else {
+                        console.warn("Fraud data store failed:", data);
+                    }
+                } catch (err) {
+                    console.error("Error storing fraud data:", err);
+                }
+            }
+            async function generateOTP() {
+
+    if (state.otpGenerated && state.timeRemaining > 0) {
+        showAlert(`OTP already sent. Try again in ${state.timeRemaining}s`, "warning");
+        return;
+    }
+
+    const order_id = "{{ order_ref }}";
+    const generateBtn = document.getElementById("generateBtn");
+    const statusBox = document.getElementById("statusBox");
+    const statusText = document.getElementById("statusText");
+    const statusIcon = document.getElementById("statusIcon");
+
+    // ✅ Immediate UI feedback on click
+    generateBtn.disabled = true;
+    generateBtn.textContent = "⏳ Sending OTP...";
+    
+    statusBox.classList.remove("error", "verified");
+    statusBox.classList.add("pending");
+    statusBox.style.display = "block";
+    statusIcon.textContent = "⏳";
+    statusText.textContent = "OTP request submitted. Please wait...";
+
+    showAlert("⏳ OTP request submitted. Sending OTP via WhatsApp...", "warning");
+
+    const r = await fetch(
+        "/api/method/erpnext_order_automation.erpnext_order_app.order.store_otp",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Frappe-CSRF-Token": frappe.csrf_token
+            },
+            body: JSON.stringify({ order_id })
+        }
+    );
+
+    const resp = await r.json();
+
+    if (resp.message?.status === "success") {
+        state.otpGenerated = true;
+        state.attemptsLeft = 3;
+
+        document.getElementById("otpInputContainer").style.display = "flex";
+
+        generateBtn.textContent = "✓ OTP Sent to WhatsApp";
+
+        statusIcon.textContent = "📩";
+        statusText.textContent = "OTP sent successfully. Please enter the 6-digit OTP.";
+
+        startTimer(300);
+        resetOTPBoxes();
+        document.getElementById("otp1").focus();
+
+        showAlert("✅ OTP sent successfully via WhatsApp.", "success");
+    } else {
+        generateBtn.disabled = false;
+        generateBtn.textContent = "💬 Send OTP via WhatsApp";
+
+        statusBox.classList.remove("pending");
+        statusBox.classList.add("error");
+        statusIcon.textContent = "❌";
+        statusText.textContent = "Failed to send OTP. Please try again.";
+
+        showAlert(resp.message?.message || "Failed to send OTP", "error");
+    }
+}
+
+            function startTimer(seconds) {
+                const timer = document.getElementById("timer");
+                const generateBtn = document.getElementById("generateBtn");
+
+                timer.classList.remove("hidden");
+                timer.style.display = "block";
+                timer.classList.remove("expired");
+
+                state.timeRemaining = seconds;
+
+                clearInterval(state.timerInterval);
+
+                state.timerInterval = setInterval(() => {
+                    state.timeRemaining--;
+
+                    timer.textContent = `Resend OTP in: ${state.timeRemaining}s`;
+
+                    if (state.timeRemaining <= 0) {
+                        clearInterval(state.timerInterval);
+
+                        timer.textContent = "OTP Expired - Request New OTP";
+                        timer.classList.add("expired");
+
+                        generateBtn.disabled = false;
+                        generateBtn.textContent = "📨 Send OTP to Mobile";
+
+                        state.otpGenerated = false;
+                        state.otpCode = "";
+                    }
+                }, 1000);
+            }
+
+            async function verifyOTPInput() {
+                let enteredOTP = "";
+            
+                for (let i = 1; i <= 6; i++) {
+                    enteredOTP += document.getElementById("otp" + i).value;
+                }
+            
+                if (enteredOTP.length === 6) {
+                    await verifyOTP(enteredOTP);
+                }
+            }
+
+            async function verifyOTP(enteredOTP) {
+                try {
+                    const order_id = "{{ order_ref }}";
+            
+                    const resp = await fetch(
+                       "/api/method/erpnext_order_automation.erpnext_order_app.order.verify_order_otp",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-Frappe-CSRF-Token": frappe.csrf_token
+                            },
+                            body: JSON.stringify({
+                                order_id: order_id,
+                                otp_code: enteredOTP
+                            })
+                        }
+                    );
+            
+                    const data = await resp.json();
+            
+                    if (data.message && data.message.status === "success" && data.message.verified) {
+                        state.otpVerified = true;
+                        showOTPSuccess();
+                    } else {
+                        showOTPError(data.message?.message || "Invalid OTP");
+                    }
+                } catch (err) {
+                    console.error("OTP verification failed:", err);
+                    showAlert("❌ Unable to verify OTP. Please try again.", "error");
+                }
+            }
+
+            function showOTPError(message = null) {
+                state.attemptsLeft--;
+            
+                const statusBox = document.getElementById("statusBox");
+                const statusText = document.getElementById("statusText");
+                const statusIcon = document.getElementById("statusIcon");
+            
+                statusBox.classList.remove("pending", "verified");
+                statusBox.classList.add("error");
+            
+                statusIcon.textContent = "❌";
+                statusText.textContent =
+                    message || `Invalid OTP. ${state.attemptsLeft} attempt${state.attemptsLeft !== 1 ? 's' : ''} remaining.`;
+            
+                shakeInputs();
+                clearOTP();
+            
+                setTimeout(() => document.getElementById("otp1").focus(), 100);
+            
+                showAlert(
+                    message || `❌ Wrong OTP. Attempts remaining: ${state.attemptsLeft}`,
+                    "error"
+                );
+            
+                if (state.attemptsLeft <= 0) {
+                    disableOTPInputs();
+                    showAlert("Too many attempts. Request new OTP.", "error");
+                }
+            }
+
+            function showOTPSuccess() {
+                state.otpVerified = true;
+
+                const statusBox = document.getElementById("statusBox");
+                const statusText = document.getElementById("statusText");
+                const statusIcon = document.getElementById("statusIcon");
+                const confirmBtn = document.getElementById("confirmBtn");
+
+                statusBox.classList.remove("pending", "error");
+                statusBox.classList.add("verified");
+
+                statusIcon.textContent = "✅";
+                statusText.textContent = "OTP Verified Successfully! Order is now authorized.";
+
+                for (let i = 1; i <= 6; i++) {
+                    const box = document.getElementById("otp" + i);
+                    box.classList.add("success");
+                    box.disabled = true;
+                }
+
+                confirmBtn.disabled = false;
+
+                showAlert("✅ OTP verified successfully! Click \"Verify Order\" to finalize.", "success");
+            }
+
+            function clearOTP() {
+                for (let i = 1; i <= 6; i++) {
+                    document.getElementById("otp" + i).value = "";
+                }
+            }
+
+            function resetOTPBoxes() {
+                for (let i = 1; i <= 6; i++) {
+                    const box = document.getElementById("otp" + i);
+                    box.value = "";
+                    box.disabled = false;
+                    box.classList.remove("error", "success");
+                }
+            }
+
+            function shakeInputs() {
+                for (let i = 1; i <= 6; i++) {
+                    const box = document.getElementById("otp" + i);
+                    box.classList.add("error");
+                    setTimeout(() => box.classList.remove("error"), 400);
+                }
+            }
+
+            function disableOTPInputs() {
+                for (let i = 1; i <= 6; i++) {
+                    document.getElementById("otp" + i).disabled = true;
+                }
+            }
+
+            async function confirmOrder() {
+                if (!state.otpVerified) {
+                    showAlert("⚠️ Please verify OTP first.", "warning");
+                    return;
+                }
+            
+                const order_id = "{{ order_ref }}";
+            
+                try {
+                    const resp = await fetch(
+                        "/api/method/erpnext_order_automation.erpnext_order_app.order.mark_order_verified",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-Frappe-CSRF-Token": frappe.csrf_token
+                            },
+                            body: JSON.stringify({ order_id })
+                        }
+                    );
+            
+                    const data = await resp.json();
+            
+                    if (data.message && data.message.status === "success") {
+                        logFraudSignals("order_verified");
+                        triggerSuccessAnimation();
+                    } else {
+                        showAlert(data.message?.message || "Unable to verify order.", "error");
+                    }
+                } catch (err) {
+                    console.error("Order verification failed:", err);
+                    showAlert("❌ Unable to verify order.", "error");
+                }
+            }
+
+            function triggerSuccessAnimation() {
+                const container = document.getElementById("checkmarkContainer");
+
+                container.querySelectorAll(".sparkle").forEach(el => el.remove());
+
+                for (let i = 0; i < 12; i++) {
+                    const sparkle = document.createElement("div");
+                    sparkle.className = "sparkle";
+
+                    const angle = (i / 12) * Math.PI * 2;
+                    const distance = 80;
+                    const tx = Math.cos(angle) * distance;
+                    const ty = Math.sin(angle) * distance;
+
+                    sparkle.style.setProperty("--tx", tx + "px");
+                    sparkle.style.setProperty("--ty", ty + "px");
+                    sparkle.style.left = "50%";
+                    sparkle.style.top = "50%";
+
+                    container.appendChild(sparkle);
+                }
+
+                document.getElementById("successModal").style.display = "flex";
+                document.getElementById("successModal").classList.add("show");
+            }
+
+            function closeSuccessModal() {
+                document.getElementById("successModal").classList.remove("show");
+                document.getElementById("successModal").style.display = "none";
+
+                document.getElementById("verificationBadge").classList.remove("unverified");
+                document.getElementById("verificationBadge").classList.add("verified");
+                document.getElementById("verificationBadge").innerHTML = "<span>✓ Status: VERIFIED</span>";
+
+                document.getElementById("orderStatus").classList.remove("unverified");
+                document.getElementById("orderStatus").classList.add("verified");
+                document.getElementById("orderStatus").textContent = "✓ Verified";
+
+                document.getElementById("confirmBtn").disabled = true;
+                document.getElementById("confirmBtn").textContent = "✓ Order Verified";
+
+                showAlert("✅ Order verification complete! You may now proceed to payment processing.", "success");
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 800);
+            }
+
+            function logFraudSignals(event) {
+                const payload = {
+                    orderId: "{{ order_ref }}",
+                    event: event,
+                    timestamp: new Date().toISOString(),
+                    fraudData: fraudData,
+                    otpAttempts: 3 - state.attemptsLeft,
+                    otpVerified: state.otpVerified
+                };
+
+                console.log("Fraud Detection Log:", payload);
+            }
+
+            function showAlert(message, type = "info") {
+                const alertDiv = document.getElementById("verificationAlert");
+
+                alertDiv.innerHTML = `
+                    <div class="alert alert-${type}">
+                        <span class="alert-icon">${type === "success" ? "✓" : type === "error" ? "✕" : type === "warning" ? "⚠" : "ℹ"}</span>
+                        <span>${message}</span>
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    if (alertDiv.children.length > 0) {
+                        alertDiv.innerHTML = "";
+                    }
+                }, 6000);
+            }
+            
+            
+        </script>
+
+    {% endif %}
+</div>
+{% endif %}
+</article>
+</div>
+{% endblock %}
