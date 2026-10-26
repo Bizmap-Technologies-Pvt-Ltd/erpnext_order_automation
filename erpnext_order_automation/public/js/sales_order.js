@@ -11,8 +11,9 @@ frappe.ui.form.on("Sales Order", {
 		if (frm.doc.docstatus !== 1 || !frm.doc.custom_skip_order_confirmation) return;
 		if (!frappe.user.has_role(["Sales Manager", "System Manager"])) return;
 
-		frappe.db.exists("Order Confirmation", { sales_order: frm.doc.name }).then((exists) => {
-			if (exists) return;
+		// frappe.db.exists() in JS takes a name only; filters need get_value
+		frappe.db.get_value("Order Confirmation", { sales_order: frm.doc.name }, "name").then((r) => {
+			if (r.message && r.message.name) return;
 			frm.add_custom_button(__("Send Order Confirmation"), () => {
 				frappe.confirm(
 					__("Order Confirmation was skipped for this order. Create it and send the WhatsApp link to the customer now?"),
