@@ -19,6 +19,7 @@ def send_order_confirmation_whatsapp(order_conf):
     try:
         payload = {
             "order_confirmation": order_conf.name,
+            "sales_order": order_conf.sales_order or order_conf.name,
             "phone": order_conf.contact_mobile or order_conf.contact_phone or "",
             "customer": order_conf.customer or "",
             "customer_name": order_conf.customer_name or "",
@@ -263,6 +264,7 @@ def mark_order_verified():
             "https://n8n.bizmap.in/webhook/order-confirmed-details",
             json={
                 "order_confirmation": order.name,
+                "sales_order": order.sales_order or order.name,
                 "customer": order.customer_name,
                 "phone": order.contact_mobile,
                 "company": order.company,
